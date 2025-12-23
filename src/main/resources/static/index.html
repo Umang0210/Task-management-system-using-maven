@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TMS – Task Management System</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f4f6fb;
+            color: #1e293b;
+        }
+
+        header {
+            background: #4f46e5;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 6px;
+        }
+
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+        }
+
+        .task {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .task.completed {
+            background: #ecfdf5;
+            border-color: #22c55e;
+        }
+
+        .task h3 {
+            margin: 0 0 4px;
+            font-size: 16px;
+        }
+
+        .task p {
+            margin: 0;
+            font-size: 13px;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Task Management System</h1>
+    <p>Java + Spring Boot CRUD Application</p>
+</header>
+
+<div class="container">
+
+    <div class="card">
+        <h2>Create Task</h2>
+        <input id="title" placeholder="Task title">
+        <textarea id="desc" rows="3" placeholder="Task description"></textarea>
+        <button class="btn-primary" onclick="createTask()">Add Task</button>
+    </div>
+
+    <div class="card">
+        <h2>Tasks</h2>
+        <div id="tasks"></div>
+        <button class="btn-secondary" onclick="refresh()">Refresh</button>
+        <button class="btn-danger" onclick="deleteAll()">Delete All</button>
+    </div>
+
+</div>
+
+<script>
+    const API = "/api/tasks";
+
+    async function refresh() {
+        const res = await fetch(API);
+        const tasks = await res.json();
+        const container = document.getElementById("tasks");
+        container.innerHTML = "";
+
+        if (tasks.length === 0) {
+            container.innerHTML = "<p>No tasks available.</p>";
+            return;
+        }
+
+        tasks.forEach(task => {
+            const div = document.createElement("div");
+            div.className = "task" + (task.completed ? " completed" : "");
+
+            div.innerHTML = `
+                <div>
+                    <h3>${escapeHtml(task.title)}</h3>
+                    <p>${escapeHtml(task.description || "")}</p>
+                </div>
+                <div>
+                    <button class="btn-primary" onclick="toggle(${task.id}, ${task.completed})">
+                        ${task.completed ? "Undo" : "Complete"}
+                    </button>
+                    <button class="btn-danger" onclick="removeTask(${task.id})">
+                        Delete
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(div);
+        });
+    }
+
+    async function createTask() {
+        const title = document.getElementById("title").value.trim();
+        const description = document.getElementById("desc").value.trim();
+
+        if (!title) {
+            alert("Title is required");
+            return;
+        }
+
+        await fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, description })
+        });
+
+        document.getElementById("title").value = "";
+        document.getElementById("desc").value = "";
+        refresh();
+    }
+
+    async function toggle(id, completed) {
+        await fetch(`${API}/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ completed: !completed })
+        });
+        refresh();
+    }
+
+    async function removeTask(id) {
+        await fetch(`${API}/${id}`, { method: "DELETE" });
+        refresh();
+    }
+
+    async function deleteAll() {
+        if (!confirm("Delete all tasks?")) return;
+        await fetch(API, { method: "DELETE" });
+        refresh();
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/[&<>"']/g, m =>
+            ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" })[m]
+        );
+    }
+
+    refresh();
+</script>
+
+</body>
+</html>
